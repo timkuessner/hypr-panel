@@ -1,8 +1,8 @@
+use chrono::{Local, Timelike};
 use gtk4::gdk::Display;
-use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, CenterBox, CssProvider, Label};
+use gtk4::{glib, prelude::*};
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
-use chrono::Local;
 
 use std::fs;
 
@@ -54,9 +54,36 @@ fn build_ui(app: &Application) {
     container.set_center_widget(Some(&center));
 
     let right = Label::builder()
-        .label(&format!("network | battery | {}", Local::now().format("%a %b %d %H:%M")))
+        .label(&format!(
+            "network | battery | {}",
+            Local::now().format("%a %b %d %H:%M")
+        ))
         .build();
     container.set_end_widget(Some(&right));
+
+    let now = Local::now();
+    let seconds_until_next_minute = 60 - now.second();
+
+    let right_clone = right.clone();
+
+    glib::timeout_add_seconds_local(seconds_until_next_minute, move || {
+        right_clone.set_label(&format!(
+            "network | battery | {}",
+            Local::now().format("%a %b %d %H:%M")
+        ));
+
+        let right_clone2 = right_clone.clone();
+        glib::timeout_add_seconds_local(60, move || {
+            right_clone2.set_label(&format!(
+                "network | battery | {}",
+                Local::now().format("%a %b %d %H:%M")
+            ));
+            print!("now");
+            glib::ControlFlow::Continue
+        });
+
+        glib::ControlFlow::Break
+    });
 
     window.set_child(Some(&container));
     window.present();
