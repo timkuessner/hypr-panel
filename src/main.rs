@@ -32,16 +32,16 @@ fn build_ui(app: &Application) {
     container.set_margin_end(10);
     
     // Left side - workspaces (placeholder)
-    let app = Label::new(Some("code-oss"));
-    container.pack_start(&app, false, false, 0);
+    let left = Label::new(Some("code-oss"));
+    container.pack_start(&left, false, false, 0);
     
     // Center - window title (placeholder)
-    let workspaces = Label::new(Some("1 2 3 4 5"));
-    container.set_center_widget(Some(&workspaces));
+    let center = Label::new(Some("1 2 3 4 5"));
+    container.set_center_widget(Some(&center));
     
     // Right side - system info (placeholder)
-    let system_info = Label::new(Some("network | battery | Fri Feb 13 15:20"));
-    container.pack_end(&system_info, false, false, 0);
+    let right = Label::new(Some("network | battery | Fri Feb 13 15:20"));
+    container.pack_end(&right, false, false, 0);
 
     window.add(&container);
     window.show_all();
