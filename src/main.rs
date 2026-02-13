@@ -1,48 +1,59 @@
-use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Box, Label, Orientation};
-use gtk_layer_shell::{Edge, Layer, LayerShell};
+use gtk4::prelude::*;
+use gtk4::{Application, ApplicationWindow, CenterBox, Label, CssProvider};
+use gtk4::gdk::Display;
+use gtk4_layer_shell::{Edge, Layer, LayerShell};  // ADD THIS LINE
+
+use std::fs;
 
 fn main() {
-    let app = Application::new(
-        Some("com.example.hypr-panel"),
-        Default::default(),
-    );
+    let app = Application::builder()
+        .application_id("com.example.hypr-panel")
+        .build();
 
     app.connect_activate(build_ui);
     app.run();
 }
 
 fn build_ui(app: &Application) {
-    let window = ApplicationWindow::new(app);
-    window.set_default_size(1920, 30);
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .default_width(1920)
+        .default_height(30)
+        .decorated(false)
+        .build();
 
-    // Initialize layer shell
-    window.init_layer_shell();
+    // Load external CSS file
+    let css = fs::read_to_string("style.css").expect("CSS file not found");
+    let provider = CssProvider::new();
+    provider.load_from_data(&css);
     
-    // Configure as a panel
+    if let Some(display) = Display::default() {
+        gtk4::style_context_add_provider_for_display(&display, &provider, 
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+    }
+
+    // Layer shell setup
+    window.init_layer_shell();
     window.set_layer(Layer::Top);
     window.auto_exclusive_zone_enable();
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Left, true);
     window.set_anchor(Edge::Right, true);
 
-    // Create panel content
-    let container = Box::new(Orientation::Horizontal, 10);
+    let container = CenterBox::new();
+    container.add_css_class("transparent-panel");
     container.set_margin_start(10);
     container.set_margin_end(10);
     
-    // Left side - workspaces (placeholder)
-    let left = Label::new(Some("code-oss"));
-    container.pack_start(&left, false, false, 0);
+    let left = Label::builder().label("code-oss").build();
+    container.set_start_widget(Some(&left));
     
-    // Center - window title (placeholder)
-    let center = Label::new(Some("1 2 3 4 5"));
+    let center = Label::builder().label("1 2 3 4 5").build();
     container.set_center_widget(Some(&center));
     
-    // Right side - system info (placeholder)
-    let right = Label::new(Some("network | battery | Fri Feb 13 15:20"));
-    container.pack_end(&right, false, false, 0);
+    let right = Label::builder().label("network | battery | Fri Feb 13 15:20").build();
+    container.set_end_widget(Some(&right));
 
-    window.add(&container);
-    window.show_all();
+    window.set_child(Some(&container));
+    window.present();
 }
