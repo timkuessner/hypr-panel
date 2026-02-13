@@ -1,7 +1,7 @@
-use gtk4::prelude::*;
-use gtk4::{Application, ApplicationWindow, CenterBox, Label, CssProvider};
 use gtk4::gdk::Display;
-use gtk4_layer_shell::{Edge, Layer, LayerShell};  // ADD THIS LINE
+use gtk4::prelude::*;
+use gtk4::{Application, ApplicationWindow, CenterBox, CssProvider, Label};
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
 
 use std::fs;
 
@@ -22,17 +22,18 @@ fn build_ui(app: &Application) {
         .decorated(false)
         .build();
 
-    // Load external CSS file
     let css = fs::read_to_string("style.css").expect("CSS file not found");
     let provider = CssProvider::new();
     provider.load_from_data(&css);
-    
+
     if let Some(display) = Display::default() {
-        gtk4::style_context_add_provider_for_display(&display, &provider, 
-            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+        gtk4::style_context_add_provider_for_display(
+            &display,
+            &provider,
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
     }
 
-    // Layer shell setup
     window.init_layer_shell();
     window.set_layer(Layer::Top);
     window.auto_exclusive_zone_enable();
@@ -41,17 +42,19 @@ fn build_ui(app: &Application) {
     window.set_anchor(Edge::Right, true);
 
     let container = CenterBox::new();
-    container.add_css_class("transparent-panel");
+    //container.add_css_class("transparent-panel");
     container.set_margin_start(10);
     container.set_margin_end(10);
-    
+
     let left = Label::builder().label("code-oss").build();
     container.set_start_widget(Some(&left));
-    
+
     let center = Label::builder().label("1 2 3 4 5").build();
     container.set_center_widget(Some(&center));
-    
-    let right = Label::builder().label("network | battery | Fri Feb 13 15:20").build();
+
+    let right = Label::builder()
+        .label("network | battery | Fri Feb 13 15:20")
+        .build();
     container.set_end_widget(Some(&right));
 
     window.set_child(Some(&container));
