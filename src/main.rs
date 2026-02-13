@@ -2,6 +2,7 @@ use gtk4::gdk::Display;
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, CenterBox, CssProvider, Label};
 use gtk4_layer_shell::{Edge, Layer, LayerShell};
+use chrono::Local;
 
 use std::fs;
 
@@ -53,7 +54,7 @@ fn build_ui(app: &Application) {
     container.set_center_widget(Some(&center));
 
     let right = Label::builder()
-        .label("network | battery | Fri Feb 13 15:20")
+        .label(&format!("network | battery | {}", Local::now().format("%a %b %d %H:%M")))
         .build();
     container.set_end_widget(Some(&right));
 
