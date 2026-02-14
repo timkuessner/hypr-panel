@@ -78,7 +78,6 @@ fn build_ui(app: &Application) {
                 "network | battery | {}",
                 Local::now().format("%a %b %d %H:%M")
             ));
-            print!("now");
             glib::ControlFlow::Continue
         });
 
