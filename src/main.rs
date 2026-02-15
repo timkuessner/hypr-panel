@@ -33,16 +33,17 @@ fn build_ui(app: &Application) {
         );
     }
     window.init_layer_shell();
+    window.set_namespace(Some("hypr-panel"));
     window.set_layer(Layer::Top);
     window.auto_exclusive_zone_enable();
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Left, true);
     window.set_anchor(Edge::Right, true);
     let container = CenterBox::new();
-    //container.add_css_class("transparent-panel");
+    
     container.set_margin_start(10);
     container.set_margin_end(10);
-    let left = Label::builder().label("Desktop").build();
+    let left = Label::builder().label("desktop").build();
     container.set_start_widget(Some(&left));
 
     let receiver = hyprland_listener::start_listener();
@@ -62,7 +63,7 @@ fn build_ui(app: &Application) {
         ))
         .build();
     container.set_end_widget(Some(&right));
-    let now = Local::now();
+    let now: chrono::DateTime<Local> = Local::now();
     let seconds_until_next_minute = 60 - now.second();
     let right_clone = right.clone();
     glib::timeout_add_seconds_local(seconds_until_next_minute, move || {
