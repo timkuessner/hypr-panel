@@ -59,10 +59,7 @@ fn build_ui(app: &Application) {
         }
     });
 
-    let center = Label::builder()
-        .label("1 2 3 4 5")
-        .use_markup(true)
-        .build();
+    let center = Label::builder().label("1 2 3 4 5").use_markup(true).build();
     container.set_center_widget(Some(&center));
 
     let workspace_receiver = hyprland_listener::start_workspace_listener();
@@ -71,18 +68,31 @@ fn build_ui(app: &Application) {
         while let Ok((active_ws, max_ws)) = workspace_receiver.recv().await {
             let workspace_count = max_ws.max(5);
             let mut workspace_text = String::new();
-            
+
             for i in 1..=workspace_count {
                 if i > 1 {
                     workspace_text.push_str(" ");
                 }
-                if i == active_ws {
-                    workspace_text.push_str(&format!("<b>{}</b>", i));
+
+                let distance = (i - active_ws).abs();
+
+                let size_pt = match distance {
+                    0 => 10,
+                    _ => 8,
+                };
+
+                let size_pango = size_pt * 1024;
+
+                if distance == 0 {
+                    workspace_text.push_str(&format!(
+                        "<span size=\"{}\" weight=\"bold\">{}</span>",
+                        size_pango, i
+                    ));
                 } else {
-                    workspace_text.push_str(&i.to_string());
+                    workspace_text.push_str(&format!("<span size=\"{}\">{}</span>", size_pango, i));
                 }
             }
-            
+
             center_clone.set_markup(&workspace_text);
         }
     });
