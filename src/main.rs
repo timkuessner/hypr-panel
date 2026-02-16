@@ -11,6 +11,7 @@ fn main() {
     let app = Application::builder()
         .application_id("com.example.hypr-panel")
         .build();
+
     app.connect_activate(build_ui);
     app.run();
 }
@@ -22,9 +23,11 @@ fn build_ui(app: &Application) {
         .default_height(30)
         .decorated(false)
         .build();
+
     let css = fs::read_to_string("style.css").expect("CSS file not found");
     let provider = CssProvider::new();
     provider.load_from_data(&css);
+
     if let Some(display) = Display::default() {
         gtk4::style_context_add_provider_for_display(
             &display,
@@ -32,6 +35,7 @@ fn build_ui(app: &Application) {
             gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
     }
+
     window.init_layer_shell();
     window.set_namespace(Some("hypr-panel"));
     window.set_layer(Layer::Top);
@@ -39,23 +43,50 @@ fn build_ui(app: &Application) {
     window.set_anchor(Edge::Top, true);
     window.set_anchor(Edge::Left, true);
     window.set_anchor(Edge::Right, true);
+
     let container = CenterBox::new();
-    
     container.set_margin_start(10);
     container.set_margin_end(10);
-    let left = Label::builder().label("desktop").build();
+
+    let left = Label::builder().label("Desktop").build();
     container.set_start_widget(Some(&left));
 
-    let receiver = hyprland_listener::start_listener();
+    let active_window_receiver = hyprland_listener::start_active_window_listener();
     let left_clone = left.clone();
     glib::spawn_future_local(async move {
-        while let Ok(class) = receiver.recv().await {
+        while let Ok(class) = active_window_receiver.recv().await {
             left_clone.set_label(&class);
         }
     });
 
-    let center = Label::builder().label("1 2 3 4 5").build();
+    let center = Label::builder()
+        .label("1 2 3 4 5")
+        .use_markup(true)
+        .build();
     container.set_center_widget(Some(&center));
+
+    let workspace_receiver = hyprland_listener::start_workspace_listener();
+    let center_clone = center.clone();
+    glib::spawn_future_local(async move {
+        while let Ok((active_ws, max_ws)) = workspace_receiver.recv().await {
+            let workspace_count = max_ws.max(5);
+            let mut workspace_text = String::new();
+            
+            for i in 1..=workspace_count {
+                if i > 1 {
+                    workspace_text.push_str(" ");
+                }
+                if i == active_ws {
+                    workspace_text.push_str(&format!("<b>{}</b>", i));
+                } else {
+                    workspace_text.push_str(&i.to_string());
+                }
+            }
+            
+            center_clone.set_markup(&workspace_text);
+        }
+    });
+
     let right = Label::builder()
         .label(&format!(
             "network | battery | {}",
@@ -63,14 +94,17 @@ fn build_ui(app: &Application) {
         ))
         .build();
     container.set_end_widget(Some(&right));
-    let now: chrono::DateTime<Local> = Local::now();
+
+    let now: chrono::DateTime<_> = Local::now();
     let seconds_until_next_minute = 60 - now.second();
+
     let right_clone = right.clone();
     glib::timeout_add_seconds_local(seconds_until_next_minute, move || {
         right_clone.set_label(&format!(
             "network | battery | {}",
             Local::now().format("%a %b %d %H:%M")
         ));
+
         let right_clone2 = right_clone.clone();
         glib::timeout_add_seconds_local(60, move || {
             right_clone2.set_label(&format!(
@@ -79,8 +113,10 @@ fn build_ui(app: &Application) {
             ));
             glib::ControlFlow::Continue
         });
+
         glib::ControlFlow::Break
     });
+
     window.set_child(Some(&container));
     window.present();
 }
