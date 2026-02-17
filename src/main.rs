@@ -1,4 +1,5 @@
 mod hyprland_listener;
+mod battery_listener;
 
 use chrono::{Local, Timelike};
 use gtk4::gdk::Display;
@@ -125,6 +126,16 @@ fn build_ui(app: &Application) {
         });
 
         glib::ControlFlow::Break
+    });
+
+    let battery_receiver = battery_listener::start_battery_listener();
+    glib::spawn_future_local(async move {
+        while let Ok(info) = battery_receiver.recv().await {
+            println!(
+                "{}% [{}]",
+                info.capacity, info.status
+            );
+        }
     });
 
     window.set_child(Some(&container));
