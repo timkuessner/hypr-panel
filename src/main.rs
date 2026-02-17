@@ -1,5 +1,5 @@
-mod hyprland_listener;
 mod battery_listener;
+mod hyprland_listener;
 
 use chrono::{Local, Timelike};
 use gtk4::gdk::Display;
@@ -98,30 +98,32 @@ fn build_ui(app: &Application) {
         }
     });
 
-    let right = Label::builder()
-        .label(&format!(
-            "network | battery | {}",
-            Local::now().format("%a %b %d %H:%M")
-        ))
+    let right_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+
+    let network_label = Label::builder().label("network").build();
+    let battery_label = Label::builder().label("0% []").build();
+    let datetime_label = Label::builder()
+        .label(&format!("{}", Local::now().format("%a %b %d %H:%M")))
         .build();
-    container.set_end_widget(Some(&right));
+
+    right_box.append(&network_label);
+    right_box.append(&Label::builder().label("|").build());
+    right_box.append(&battery_label);
+    right_box.append(&Label::builder().label("|").build());
+    right_box.append(&datetime_label);
+
+    container.set_end_widget(Some(&right_box));
 
     let now: chrono::DateTime<_> = Local::now();
     let seconds_until_next_minute = 60 - now.second();
 
-    let right_clone = right.clone();
+    let datetime_label_clone = datetime_label.clone();
     glib::timeout_add_seconds_local(seconds_until_next_minute, move || {
-        right_clone.set_label(&format!(
-            "network | battery | {}",
-            Local::now().format("%a %b %d %H:%M")
-        ));
+        datetime_label_clone.set_label(&format!("{}", Local::now().format("%a %b %d %H:%M")));
 
-        let right_clone2 = right_clone.clone();
+        let datetime_label_clone2 = datetime_label_clone.clone();
         glib::timeout_add_seconds_local(60, move || {
-            right_clone2.set_label(&format!(
-                "network | battery | {}",
-                Local::now().format("%a %b %d %H:%M")
-            ));
+            datetime_label_clone2.set_label(&format!("{}", Local::now().format("%a %b %d %H:%M")));
             glib::ControlFlow::Continue
         });
 
@@ -131,10 +133,7 @@ fn build_ui(app: &Application) {
     let battery_receiver = battery_listener::start_battery_listener();
     glib::spawn_future_local(async move {
         while let Ok(info) = battery_receiver.recv().await {
-            println!(
-                "{}% [{}]",
-                info.capacity, info.status
-            );
+            battery_label.set_label(&format!("{}% [{}]", info.capacity, info.status));
         }
     });
 
