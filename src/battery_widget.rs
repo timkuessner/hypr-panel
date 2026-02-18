@@ -7,7 +7,7 @@ use std::rc::Rc;
 const BODY_W: f64 = 22.0;
 const BODY_H: f64 = 12.0;
 const NOB_W: f64 = 2.0;
-const NOB_H: f64 = 6.0;
+const NOB_H: f64 = 5.0;
 const NOB_GAP: f64 = 1.0;
 const TOTAL_W: f64 = BODY_W + NOB_GAP + NOB_W;
 const RADIUS: f64 = 8.0;
@@ -25,6 +25,7 @@ pub fn build_battery_widget() -> (GBox, impl Fn(BatteryInfo)) {
     let area = DrawingArea::new();
     area.set_content_width(TOTAL_W as i32);
     area.set_content_height(BODY_H as i32);
+    area.set_valign(gtk4::Align::Center);
 
     {
         let capacity = capacity.clone();

@@ -117,7 +117,7 @@ fn build_ui(app: &Application) {
         while let Ok(info) = wifi_receiver.recv().await {
             let text = if info.connected {
                 match (info.ssid.as_deref(), info.signal) {
-                    (Some(ssid), Some(sig)) => format!("  {} {}%", ssid, sig),
+                    (Some(ssid), Some(sig)) => format!("{} {}%", ssid, sig),
                     (Some(ssid), None) => format!("  {}", ssid),
                     _ => "Connected".to_string(),
                 }
@@ -143,9 +143,9 @@ fn build_ui(app: &Application) {
         }
     });
 
+    right_box.append(&battery_widget);
     right_box.append(&wifi_label);
     right_box.append(&bt_label);
-    right_box.append(&battery_widget);
     right_box.append(&datetime_label);
 
     container.set_end_widget(Some(&right_box));
