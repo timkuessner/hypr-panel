@@ -10,54 +10,59 @@ label {
     font-size: 13px;
 }
 
-
-/* ── Battery widget ─────────────────────────────────────────── */
-
 .battery-box {
     background: transparent;
 }
 
+.battery-nob {
+    min-width: 2px;
+    min-height: 5px;
+    border-radius: 0 2px 2px 0;
+    background: rgba(255, 255, 255, 0.85);
+    margin-left: 1px;
+}
+
 .battery-percent {
-    font-size: 10px;
+    font-size: 11px;
     font-family: "Inter";
     font-weight: 600;
     color: white;
     min-width: 25px;
-    padding-left: 3px;
+    padding-left: 2px;
+}
+
+.battery-percent.white {
+    color: rgba(0, 0, 0, 0.75);
 }
 
 progressbar.battery {
     background: transparent;
 }
 
-/* The outer shell — rounded rectangle outline */
 progressbar.battery trough {
-    background:         transparent;
-    border:             1px solid white;
-    border-radius:      3px;
-    min-width:          25px;
-    min-height:         10px;
-    padding: 1px;
+    background: transparent;
+    border: 1px solid white;
+    border-radius: 5px;
+    min-width: 25px;
+    min-height: 10px;
+    padding: 2px;
 }
 
-/* The fill bar */
 progressbar.battery progress {
-    border-radius:      3px;
-    min-height:         10px;
-    background:         white;
+    border-radius: 3px;
+    min-height: 10px;
+    background: white;
+    border-color: #00000000;
 }
 
-/* Green when charging */
 progressbar.battery.charging progress {
-    background: rgba(100, 220, 130, 0.95);
+    background: #64dc82;
 }
 
-/* Red when critically low (≤ 15%) */
 progressbar.battery.critical progress {
-    background: rgba(240, 80, 70, 0.95);
+    background: #f05046;
 }
 
-/* Orange when low (≤ 30%) */
 progressbar.battery.low progress {
-    background: rgba(240, 170, 50, 0.95);
+    background: #f0aa32;
 }

@@ -3,7 +3,7 @@ use gtk4::prelude::*;
 use gtk4::{Box as GBox, Label, Orientation, Overlay, ProgressBar};
 
 pub fn build_battery_widget() -> (GBox, impl Fn(BatteryInfo)) {
-    let container = GBox::new(Orientation::Horizontal, 4);
+    let container = GBox::new(Orientation::Horizontal, 0);
     container.add_css_class("battery-box");
 
     let overlay = Overlay::new();
@@ -22,7 +22,12 @@ pub fn build_battery_widget() -> (GBox, impl Fn(BatteryInfo)) {
     overlay.set_child(Some(&bar));
     overlay.add_overlay(&pct_label);
 
+    let nob = GBox::new(Orientation::Horizontal, 0);
+    nob.add_css_class("battery-nob");
+    nob.set_valign(gtk4::Align::Center);
+
     container.append(&overlay);
+    container.append(&nob);
 
     let bar_c = bar.clone();
     let pct_label_c = pct_label.clone();
@@ -35,6 +40,7 @@ pub fn build_battery_widget() -> (GBox, impl Fn(BatteryInfo)) {
         bar_c.remove_css_class("charging");
         bar_c.remove_css_class("critical");
         bar_c.remove_css_class("low");
+        pct_label_c.remove_css_class("white");
 
         if info.status == "Charging" || info.status == "Full" {
             bar_c.add_css_class("charging");
@@ -42,6 +48,8 @@ pub fn build_battery_widget() -> (GBox, impl Fn(BatteryInfo)) {
             bar_c.add_css_class("critical");
         } else if info.capacity <= 30 {
             bar_c.add_css_class("low");
+        } else {
+            pct_label_c.add_css_class("white");
         }
     };
 
