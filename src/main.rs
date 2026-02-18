@@ -25,7 +25,7 @@ fn build_ui(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .default_width(1920)
-        .default_height(30)
+        .default_height(25)
         .decorated(false)
         .build();
 
@@ -50,8 +50,8 @@ fn build_ui(app: &Application) {
     window.set_anchor(Edge::Right, true);
 
     let container = CenterBox::new();
-    container.set_margin_start(10);
-    container.set_margin_end(10);
+    container.set_margin_start(7);
+    container.set_margin_end(7);
 
     let left = Label::builder().label("Desktop").build();
     container.set_start_widget(Some(&left));

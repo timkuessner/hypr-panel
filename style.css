@@ -1,68 +1,21 @@
 window {
-    background-color: rgba(0, 0, 0, 0.35);
+    background-color: transparent;
 }
 
 label {
     background: transparent;
     color: rgb(255, 255, 255);
     font-family: "Inter";
-    font-weight: 500;
+    font-weight: 600;
     font-size: 13px;
 }
 
+/* The DrawingArea itself needs a transparent background so Cairo
+   draws over the true window background, not a white GTK default. */
 .battery-box {
     background: transparent;
 }
 
-.battery-nob {
-    min-width: 2px;
-    min-height: 5px;
-    border-radius: 0 2px 2px 0;
-    background: rgba(255, 255, 255, 0.85);
-    margin-left: 1px;
-}
-
-.battery-percent {
-    font-size: 11px;
-    font-family: "Inter";
-    font-weight: 600;
-    color: white;
-    min-width: 25px;
-    padding-left: 2px;
-}
-
-.battery-percent.white {
-    color: rgba(0, 0, 0, 0.75);
-}
-
-progressbar.battery {
+.battery-box drawingarea {
     background: transparent;
-}
-
-progressbar.battery trough {
-    background: transparent;
-    border: 1px solid white;
-    border-radius: 5px;
-    min-width: 25px;
-    min-height: 10px;
-    padding: 2px;
-}
-
-progressbar.battery progress {
-    border-radius: 3px;
-    min-height: 10px;
-    background: white;
-    border-color: #00000000;
-}
-
-progressbar.battery.charging progress {
-    background: #64dc82;
-}
-
-progressbar.battery.critical progress {
-    background: #f05046;
-}
-
-progressbar.battery.low progress {
-    background: #f0aa32;
 }
