@@ -4,7 +4,7 @@ use gtk4::{Box as GBox, DrawingArea, Orientation};
 use std::cell::Cell;
 use std::rc::Rc;
 
-const BODY_W: f64 = 22.0;
+const BODY_W: f64 = 24.0;
 const BODY_H: f64 = 12.0;
 const NOB_W: f64 = 2.0;
 const NOB_H: f64 = 5.0;
