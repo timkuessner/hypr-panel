@@ -1,5 +1,9 @@
 mod battery_listener;
+mod bluetooth_listener;
 mod hyprland_listener;
+mod wifi_listener;
+
+mod battery_widget;
 
 use chrono::{Local, Timelike};
 use gtk4::gdk::Display;
@@ -100,16 +104,48 @@ fn build_ui(app: &Application) {
 
     let right_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
 
-    let network_label = Label::builder().label("network").build();
-    let battery_label = Label::builder().label("0% []").build();
+    let wifi_label = Label::builder().label("...").build();
+    let bt_label = Label::builder().label("...").build();
+    let (battery_widget, battery_updater) = battery_widget::build_battery_widget();
     let datetime_label = Label::builder()
         .label(&format!("{}", Local::now().format("%a %b %d %H:%M")))
         .build();
 
-    right_box.append(&network_label);
-    right_box.append(&Label::builder().label("|").build());
-    right_box.append(&battery_label);
-    right_box.append(&Label::builder().label("|").build());
+    let wifi_receiver = wifi_listener::start_wifi_listener();
+    let wifi_label_clone = wifi_label.clone();
+    glib::spawn_future_local(async move {
+        while let Ok(info) = wifi_receiver.recv().await {
+            let text = if info.connected {
+                match (info.ssid.as_deref(), info.signal) {
+                    (Some(ssid), Some(sig)) => format!("  {} {}%", ssid, sig),
+                    (Some(ssid), None) => format!("  {}", ssid),
+                    _ => "Connected".to_string(),
+                }
+            } else {
+                "Disconnected".to_string()
+            };
+            wifi_label_clone.set_label(&text);
+        }
+    });
+
+    let bt_receiver = bluetooth_listener::start_bluetooth_listener();
+    let bt_label_clone = bt_label.clone();
+    glib::spawn_future_local(async move {
+        while let Ok(info) = bt_receiver.recv().await {
+            let text: String = if !info.enabled {
+                "Off".to_string()
+            } else if info.connected_devices.is_empty() {
+                "On".to_string()
+            } else {
+                format!("{}", info.connected_devices.join(", "))
+            };
+            bt_label_clone.set_label(&text);
+        }
+    });
+
+    right_box.append(&wifi_label);
+    right_box.append(&bt_label);
+    right_box.append(&battery_widget);
     right_box.append(&datetime_label);
 
     container.set_end_widget(Some(&right_box));
@@ -133,7 +169,7 @@ fn build_ui(app: &Application) {
     let battery_receiver = battery_listener::start_battery_listener();
     glib::spawn_future_local(async move {
         while let Ok(info) = battery_receiver.recv().await {
-            battery_label.set_label(&format!("{}% [{}]", info.capacity, info.status));
+            battery_updater(info);
         }
     });
 

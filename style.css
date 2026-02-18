@@ -9,3 +9,55 @@ label {
     font-weight: 500;
     font-size: 13px;
 }
+
+
+/* ── Battery widget ─────────────────────────────────────────── */
+
+.battery-box {
+    background: transparent;
+}
+
+.battery-percent {
+    font-size: 10px;
+    font-family: "Inter";
+    font-weight: 600;
+    color: white;
+    min-width: 25px;
+    padding-left: 3px;
+}
+
+progressbar.battery {
+    background: transparent;
+}
+
+/* The outer shell — rounded rectangle outline */
+progressbar.battery trough {
+    background:         transparent;
+    border:             1px solid white;
+    border-radius:      3px;
+    min-width:          25px;
+    min-height:         10px;
+    padding: 1px;
+}
+
+/* The fill bar */
+progressbar.battery progress {
+    border-radius:      3px;
+    min-height:         10px;
+    background:         white;
+}
+
+/* Green when charging */
+progressbar.battery.charging progress {
+    background: rgba(100, 220, 130, 0.95);
+}
+
+/* Red when critically low (≤ 15%) */
+progressbar.battery.critical progress {
+    background: rgba(240, 80, 70, 0.95);
+}
+
+/* Orange when low (≤ 30%) */
+progressbar.battery.low progress {
+    background: rgba(240, 170, 50, 0.95);
+}
