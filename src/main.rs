@@ -50,11 +50,35 @@ fn build_ui(app: &Application) {
     window.set_anchor(Edge::Right, true);
 
     let container = CenterBox::new();
+
     container.set_margin_start(7);
     container.set_margin_end(7);
 
     let left = Label::builder().label("Desktop").build();
+
+    let center = Label::builder().label("1 2 3 4 5").use_markup(true).build();
+
+    let right_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+    let wifi_label = Label::builder().label("...").build();
+    let bt_label = Label::builder().label("...").build();
+    let (battery_widget, battery_updater) = battery_widget::build_battery_widget();
+    let datetime_label = Label::builder()
+        .label(&format!("{}", Local::now().format("%a %b %d %H:%M")))
+        .build();
+
+    let wifi_receiver = wifi_listener::start_wifi_listener();
+
+    right_box.append(&battery_widget);
+    right_box.append(&wifi_label);
+    right_box.append(&bt_label);
+    right_box.append(&datetime_label);
+
     container.set_start_widget(Some(&left));
+    container.set_center_widget(Some(&center));
+    container.set_end_widget(Some(&right_box));
+
+    window.set_child(Some(&container));
+    window.present();
 
     let active_window_receiver = hyprland_listener::start_active_window_listener();
     let left_clone = left.clone();
@@ -63,9 +87,6 @@ fn build_ui(app: &Application) {
             left_clone.set_label(&class);
         }
     });
-
-    let center = Label::builder().label("1 2 3 4 5").use_markup(true).build();
-    container.set_center_widget(Some(&center));
 
     let workspace_receiver = hyprland_listener::start_workspace_listener();
     let center_clone = center.clone();
@@ -102,16 +123,6 @@ fn build_ui(app: &Application) {
         }
     });
 
-    let right_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
-
-    let wifi_label = Label::builder().label("...").build();
-    let bt_label = Label::builder().label("...").build();
-    let (battery_widget, battery_updater) = battery_widget::build_battery_widget();
-    let datetime_label = Label::builder()
-        .label(&format!("{}", Local::now().format("%a %b %d %H:%M")))
-        .build();
-
-    let wifi_receiver = wifi_listener::start_wifi_listener();
     let wifi_label_clone = wifi_label.clone();
     glib::spawn_future_local(async move {
         while let Ok(info) = wifi_receiver.recv().await {
@@ -143,13 +154,6 @@ fn build_ui(app: &Application) {
         }
     });
 
-    right_box.append(&battery_widget);
-    right_box.append(&wifi_label);
-    right_box.append(&bt_label);
-    right_box.append(&datetime_label);
-
-    container.set_end_widget(Some(&right_box));
-
     let now: chrono::DateTime<_> = Local::now();
     let seconds_until_next_minute = 60 - now.second();
 
@@ -172,7 +176,4 @@ fn build_ui(app: &Application) {
             battery_updater(info);
         }
     });
-
-    window.set_child(Some(&container));
-    window.present();
 }
