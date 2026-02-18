@@ -78,8 +78,8 @@ fn build_ui(app: &Application) {
                 let distance = (i - active_ws).abs();
 
                 let size_pt = match distance {
-                    0 => 10,
-                    _ => 8,
+                    0 => 11,
+                    _ => 10,
                 };
 
                 let size_pango = size_pt * 1024;
