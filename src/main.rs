@@ -66,8 +66,6 @@ fn build_ui(app: &Application) {
         .label(&format!("{}", Local::now().format("%a %b %d %H:%M")))
         .build();
 
-    let wifi_receiver = wifi_listener::start_wifi_listener();
-
     right_box.append(&battery_widget);
     right_box.append(&wifi_label);
     right_box.append(&bt_label);
@@ -123,19 +121,22 @@ fn build_ui(app: &Application) {
         }
     });
 
+    let wifi_receiver = wifi_listener::start_wifi_listener();
     let wifi_label_clone = wifi_label.clone();
     glib::spawn_future_local(async move {
         while let Ok(info) = wifi_receiver.recv().await {
             let text = if info.connected {
-                match (info.ssid.as_deref(), info.signal) {
-                    (Some(ssid), Some(sig)) => format!("{} {}%", ssid, sig),
-                    (Some(ssid), None) => format!("  {}", ssid),
-                    _ => "Connected".to_string(),
+                match info.signal {
+                    Some(s) if s >= 75 => "󰤨",
+                    Some(s) if s >= 50 => "󰤥",
+                    Some(s) if s >= 25 => "󰤢",
+                    Some(_) => "󰤟",
+                    None => "󰤨", // connected but no signal info
                 }
             } else {
-                "Disconnected".to_string()
+                "󰤭"
             };
-            wifi_label_clone.set_label(&text);
+            wifi_label_clone.set_label(text);
         }
     });
 
@@ -143,14 +144,17 @@ fn build_ui(app: &Application) {
     let bt_label_clone = bt_label.clone();
     glib::spawn_future_local(async move {
         while let Ok(info) = bt_receiver.recv().await {
-            let text: String = if !info.enabled {
-                "Off".to_string()
-            } else if info.connected_devices.is_empty() {
-                "On".to_string()
+            if !info.enabled {
+                bt_label_clone.set_visible(false);
             } else {
-                format!("{}", info.connected_devices.join(", "))
-            };
-            bt_label_clone.set_label(&text);
+                let text = if info.connected_devices.is_empty() {
+                    "󰂯".to_string()
+                } else {
+                    format!("󰂱 {}", info.connected_devices.join(", "))
+                };
+                bt_label_clone.set_label(&text);
+                bt_label_clone.set_visible(true);
+            }
         }
     });
 
