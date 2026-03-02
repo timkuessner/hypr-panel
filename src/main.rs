@@ -1,6 +1,9 @@
 mod battery_listener;
 mod bluetooth_listener;
+mod brightness_listener;
+mod hud_overlay;
 mod hyprland_listener;
+mod volume_listener;
 mod wifi_listener;
 
 mod battery_widget;
@@ -22,13 +25,7 @@ fn main() {
 }
 
 fn build_ui(app: &Application) {
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .default_width(1920)
-        .default_height(25)
-        .decorated(false)
-        .build();
-
+    // ── CSS ─────────────────────────────────────────────────────────────────
     let css = fs::read_to_string("style.css").expect("CSS file not found");
     let provider = CssProvider::new();
     provider.load_from_data(&css);
@@ -41,6 +38,19 @@ fn build_ui(app: &Application) {
         );
     }
 
+    let volume_updater =
+        hud_overlay::build_hud_window(app, "󰕾", Some("󰖁"), hud_overlay::hud_volume_x());
+
+    let brightness_updater =
+        hud_overlay::build_hud_window(app, "󰃟", None, hud_overlay::hud_brightness_x());
+
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .default_width(1920)
+        .default_height(25)
+        .decorated(false)
+        .build();
+
     window.init_layer_shell();
     window.set_namespace(Some("hypr-panel"));
     window.set_layer(Layer::Top);
@@ -50,12 +60,10 @@ fn build_ui(app: &Application) {
     window.set_anchor(Edge::Right, true);
 
     let container = CenterBox::new();
-
     container.set_margin_start(7);
     container.set_margin_end(7);
 
     let left = Label::builder().label("Desktop").build();
-
     let center = Label::builder().label("1 2 3 4 5").use_markup(true).build();
 
     let right_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
@@ -95,17 +103,13 @@ fn build_ui(app: &Application) {
 
             for i in 1..=workspace_count {
                 if i > 1 {
-                    workspace_text.push_str(" ");
+                    workspace_text.push(' ');
                 }
-
                 let distance = (i - active_ws).abs();
-
-                let size_pt = match distance {
+                let size_pango = match distance {
                     0 => 11,
                     _ => 10,
-                };
-
-                let size_pango = size_pt * 1024;
+                } * 1024;
 
                 if distance == 0 {
                     workspace_text.push_str(&format!(
@@ -131,7 +135,7 @@ fn build_ui(app: &Application) {
                     Some(s) if s >= 50 => "󰤥",
                     Some(s) if s >= 25 => "󰤢",
                     Some(_) => "󰤟",
-                    None => "󰤨", // connected but no signal info
+                    None => "󰤨",
                 }
             } else {
                 "󰤭"
@@ -178,6 +182,21 @@ fn build_ui(app: &Application) {
     glib::spawn_future_local(async move {
         while let Ok(info) = battery_receiver.recv().await {
             battery_updater(info);
+        }
+    });
+
+    let volume_receiver = volume_listener::start_volume_listener();
+    glib::spawn_future_local(async move {
+        while let Ok(info) = volume_receiver.recv().await {
+            let fraction = (info.volume).clamp(0.0, 1.0);
+            volume_updater(fraction, info.muted);
+        }
+    });
+
+    let brightness_receiver = brightness_listener::start_brightness_listener();
+    glib::spawn_future_local(async move {
+        while let Ok(info) = brightness_receiver.recv().await {
+            brightness_updater(info.fraction(), false);
         }
     });
 }
