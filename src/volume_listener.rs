@@ -1,6 +1,7 @@
 use async_channel;
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use evdev::{Device, EventSummary, KeyCode};
+use std::process::Command;
+use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct VolumeInfo {
@@ -22,40 +23,66 @@ fn get_volume_info() -> Option<VolumeInfo> {
     })
 }
 
+const VOLUME_KEYS: [KeyCode; 3] = [
+    KeyCode::KEY_VOLUMEUP,
+    KeyCode::KEY_VOLUMEDOWN,
+    KeyCode::KEY_MUTE,
+];
+
+fn find_volume_devices() -> Vec<Device> {
+    evdev::enumerate()
+        .filter_map(|(_path, device)| {
+            let keys = device.supported_keys()?;
+            if VOLUME_KEYS.iter().any(|k| keys.contains(*k)) {
+                Some(device)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 pub fn start_volume_listener() -> async_channel::Receiver<VolumeInfo> {
     let (sender, receiver) = async_channel::unbounded();
 
-    std::thread::spawn(move || {
-        let mut child = match Command::new("pactl")
-            .arg("subscribe")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-        {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("[volume] Failed to spawn pactl subscribe: {}", e);
-                return;
-            }
-        };
+    let devices = find_volume_devices();
 
-        let stdout = child.stdout.take().expect("pactl subscribe has no stdout");
-        let reader = BufReader::new(stdout);
+    if devices.is_empty() {
+        eprintln!(
+            "[volume] No input devices found with volume/mute keys. \
+             Make sure your user is in the 'input' group: sudo usermod -aG input $USER"
+        );
+    }
 
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                if line.contains("'change' on sink") || line.contains("'change' on source") {
-                    if line.contains("on sink") {
-                        if let Some(info) = get_volume_info() {
-                            let _ = sender.send_blocking(info);
+    for mut device in devices {
+        let sender = sender.clone();
+        std::thread::spawn(move || loop {
+            match device.fetch_events() {
+                Ok(events) => {
+                    for event in events {
+                        match event.destructure() {
+                            // value 1 = key down; ignore repeat (2) and release (0)
+                            EventSummary::Key(_, key, 1)
+                                if VOLUME_KEYS.contains(&key) =>
+                            {
+                                // Give wpctl a moment to apply the change
+                                std::thread::sleep(Duration::from_millis(30));
+                                if let Some(info) = get_volume_info() {
+                                    let _ = sender.send_blocking(info);
+                                }
+                            }
+                            _ => {}
                         }
                     }
                 }
+                Err(e) => {
+                    eprintln!("[volume] evdev read error: {e}");
+                    // Device unplugged or error — stop this thread
+                    break;
+                }
             }
-        }
-
-        let _ = child.wait();
-    });
+        });
+    }
 
     receiver
 }

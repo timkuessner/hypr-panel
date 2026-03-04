@@ -1,8 +1,7 @@
 use async_channel;
+use evdev::{Device, EventSummary, KeyCode};
 use std::fs;
-use std::os::unix::io::AsRawFd;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BrightnessInfo {
@@ -42,69 +41,62 @@ fn read_brightness_info() -> Option<BrightnessInfo> {
     Some(BrightnessInfo { value, max })
 }
 
+const BRIGHTNESS_KEYS: [KeyCode; 2] = [
+    KeyCode::KEY_BRIGHTNESSUP,
+    KeyCode::KEY_BRIGHTNESSDOWN,
+];
+
+fn find_brightness_devices() -> Vec<Device> {
+    evdev::enumerate()
+        .filter_map(|(_path, device)| {
+            let keys = device.supported_keys()?;
+            if BRIGHTNESS_KEYS.iter().any(|k| keys.contains(*k)) {
+                Some(device)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 pub fn start_brightness_listener() -> async_channel::Receiver<BrightnessInfo> {
     let (sender, receiver) = async_channel::unbounded();
-    let last_state: Arc<Mutex<Option<BrightnessInfo>>> = Arc::new(Mutex::new(None));
-    let pending_since: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
 
-    {
-        let pending_since = Arc::clone(&pending_since);
-        let sender = sender.clone();
-        let last_state = Arc::clone(&last_state);
-        std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_millis(50));
-            let trigger = {
-                let guard = pending_since.lock().unwrap();
-                guard.map_or(false, |t| t.elapsed() >= Duration::from_millis(200))
-            };
-            if trigger {
-                {
-                    let mut guard = pending_since.lock().unwrap();
-                    *guard = None;
-                }
-                if let Some(info) = read_brightness_info() {
-                    let mut guard = last_state.lock().unwrap();
-                    if guard.as_ref() != Some(&info) {
-                        let _ = sender.send_blocking(info.clone());
-                        *guard = Some(info);
-                    }
-                }
-            }
-        });
+    let devices = find_brightness_devices();
+
+    if devices.is_empty() {
+        eprintln!(
+            "[brightness] No input devices found with brightness keys. \
+             Make sure your user is in the 'input' group: sudo usermod -aG input $USER"
+        );
     }
 
-    {
-        let pending_since = Arc::clone(&pending_since);
-        std::thread::spawn(move || {
-            let socket = match udev::MonitorBuilder::new()
-                .and_then(|b| b.match_subsystem("backlight"))
-                .and_then(|b| b.listen())
-            {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("[brightness] Failed to create udev monitor: {}", e);
-                    return;
-                }
-            };
-            let raw_fd = socket.as_raw_fd();
-            loop {
-                let mut pollfd = libc::pollfd {
-                    fd: raw_fd,
-                    events: libc::POLLIN,
-                    revents: 0,
-                };
-                let ret = unsafe { libc::poll(&mut pollfd as *mut libc::pollfd, 1, -1) };
-                if ret < 0 {
-                    std::thread::sleep(Duration::from_secs(1));
-                    continue;
-                }
-                if pollfd.revents & libc::POLLIN != 0 {
-                    for _ in socket.iter() {
-                        let mut guard = pending_since.lock().unwrap();
-                        if guard.is_none() {
-                            *guard = Some(Instant::now());
+    for mut device in devices {
+        let sender = sender.clone();
+        std::thread::spawn(move || loop {
+            match device.fetch_events() {
+                Ok(events) => {
+                    for event in events {
+                        match event.destructure() {
+                            // Fire on key-down (1) AND repeat (2) so the HUD
+                            // stays visible while the user holds the key
+                            EventSummary::Key(_, key, value)
+                                if BRIGHTNESS_KEYS.contains(&key) && value != 0 =>
+                            {
+                                // Give the kernel/userspace handler a moment
+                                // to write the new brightness value
+                                std::thread::sleep(Duration::from_millis(30));
+                                if let Some(info) = read_brightness_info() {
+                                    let _ = sender.send_blocking(info);
+                                }
+                            }
+                            _ => {}
                         }
                     }
+                }
+                Err(e) => {
+                    eprintln!("[brightness] evdev read error: {e}");
+                    break;
                 }
             }
         });
