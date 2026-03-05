@@ -9,29 +9,3 @@ label {
     font-weight: 600;
     font-size: 13px;
 }
-
-/* Battery widget */
-.battery-box {
-    background: transparent;
-}
-
-.battery-box drawingarea {
-    background: transparent;
-}
-
-.hud-pill {
-    background: black;
-    border-radius: 20px 20px 0px 0;
-    padding: 8px 15px;
-}
-
-.hud-pill drawingarea {
-    background: transparent;
-}
-
-.hud-icon {
-    font-size: 17px;
-    font-family: "Inter";
-    color: white;
-    font-weight: 400;
-}

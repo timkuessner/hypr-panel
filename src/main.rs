@@ -25,7 +25,6 @@ fn main() {
 }
 
 fn build_ui(app: &Application) {
-    // ── CSS ─────────────────────────────────────────────────────────────────
     let css = fs::read_to_string("style.css").expect("CSS file not found");
     let provider = CssProvider::new();
     provider.load_from_data(&css);
@@ -38,11 +37,27 @@ fn build_ui(app: &Application) {
         );
     }
 
-    let volume_updater =
-        hud_overlay::build_hud_window(app, "󰕾", Some("󰖁"), hud_overlay::hud_volume_x());
+    let cap_brightness_down =
+        hud_overlay::build_key_cap(app, hud_overlay::X_BRIGHTNESS_DOWN);
+    let cap_brightness_up =
+        hud_overlay::build_key_cap(app, hud_overlay::X_BRIGHTNESS_UP);
+    let cap_volume_mute =
+        hud_overlay::build_key_cap(app, hud_overlay::X_VOLUME_MUTE);
+    let cap_volume_down =
+        hud_overlay::build_key_cap(app, hud_overlay::X_VOLUME_DOWN);
+    let cap_volume_up =
+        hud_overlay::build_key_cap(app, hud_overlay::X_VOLUME_UP);
 
-    let brightness_updater =
-        hud_overlay::build_hud_window(app, "󰃟", None, hud_overlay::hud_brightness_x());
+    let bar_brightness = hud_overlay::build_level_bar(
+        app,
+        hud_overlay::X_BRIGHTNESS_BAR,
+        hud_overlay::W_BRIGHTNESS_BAR,
+    );
+    let bar_volume = hud_overlay::build_level_bar(
+        app,
+        hud_overlay::X_VOLUME_BAR,
+        hud_overlay::W_VOLUME_BAR,
+    );
 
     let window = ApplicationWindow::builder()
         .application(app)
@@ -117,7 +132,8 @@ fn build_ui(app: &Application) {
                         size_pango, i
                     ));
                 } else {
-                    workspace_text.push_str(&format!("<span size=\"{}\">{}</span>", size_pango, i));
+                    workspace_text
+                        .push_str(&format!("<span size=\"{}\">{}</span>", size_pango, i));
                 }
             }
 
@@ -171,7 +187,8 @@ fn build_ui(app: &Application) {
 
         let datetime_label_clone2 = datetime_label_clone.clone();
         glib::timeout_add_seconds_local(60, move || {
-            datetime_label_clone2.set_label(&format!("{}", Local::now().format("%a %b %d %H:%M")));
+            datetime_label_clone2
+                .set_label(&format!("{}", Local::now().format("%a %b %d %H:%M")));
             glib::ControlFlow::Continue
         });
 
@@ -187,16 +204,44 @@ fn build_ui(app: &Application) {
 
     let volume_receiver = volume_listener::start_volume_listener();
     glib::spawn_future_local(async move {
-        while let Ok(info) = volume_receiver.recv().await {
-            let fraction = (info.volume).clamp(0.0, 1.0);
-            volume_updater(fraction, info.muted);
+        use volume_listener::{KeyAction, VolumeKey};
+        while let Ok(event) = volume_receiver.recv().await {
+            match (&event.key, &event.action) {
+                (VolumeKey::Up, KeyAction::Press | KeyAction::Repeat) => {
+                    cap_volume_up();
+                    if let Some(info) = &event.info {
+                        bar_volume(info.volume.clamp(0.0, 1.0));
+                    }
+                }
+                (VolumeKey::Down, KeyAction::Press | KeyAction::Repeat) => {
+                    cap_volume_down();
+                    if let Some(info) = &event.info {
+                        bar_volume(info.volume.clamp(0.0, 1.0));
+                    }
+                }
+                (VolumeKey::Mute, KeyAction::Press | KeyAction::Repeat) => {
+                    cap_volume_mute();
+                }
+                _ => {}
+            }
         }
     });
 
     let brightness_receiver = brightness_listener::start_brightness_listener();
     glib::spawn_future_local(async move {
-        while let Ok(info) = brightness_receiver.recv().await {
-            brightness_updater(info.fraction(), false);
+        use brightness_listener::{BrightnessKey, KeyAction};
+        while let Ok(event) = brightness_receiver.recv().await {
+            match (&event.key, &event.action) {
+                (BrightnessKey::Up, KeyAction::Press | KeyAction::Repeat) => {
+                    cap_brightness_up();
+                    if let Some(info) = &event.info { bar_brightness(info.fraction()); }
+                }
+                (BrightnessKey::Down, KeyAction::Press | KeyAction::Repeat) => {
+                    cap_brightness_down();
+                    if let Some(info) = &event.info { bar_brightness(info.fraction()); }
+                }
+                _ => {}
+            }
         }
     });
 }
