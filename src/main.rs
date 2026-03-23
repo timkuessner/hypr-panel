@@ -78,7 +78,15 @@ fn build_ui(app: &Application) {
     container.set_margin_start(7);
     container.set_margin_end(7);
 
-    let left = Label::builder().label("Desktop").build();
+    let left_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+    let logo = gtk4::Image::from_file("logo.svg");
+    logo.set_pixel_size(16);
+ 
+    let active_window_label = Label::builder().label("Desktop").build();
+ 
+    left_box.append(&logo);
+    left_box.append(&active_window_label);
+
     let center = Label::builder().label("1 2 3 4 5").use_markup(true).build();
 
     let right_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
@@ -94,7 +102,7 @@ fn build_ui(app: &Application) {
     right_box.append(&bt_label);
     right_box.append(&datetime_label);
 
-    container.set_start_widget(Some(&left));
+    container.set_start_widget(Some(&left_box));
     container.set_center_widget(Some(&center));
     container.set_end_widget(Some(&right_box));
 
@@ -102,10 +110,10 @@ fn build_ui(app: &Application) {
     window.present();
 
     let active_window_receiver = hyprland_listener::start_active_window_listener();
-    let left_clone = left.clone();
+    let active_window_label_clone = active_window_label.clone();
     glib::spawn_future_local(async move {
         while let Ok(class) = active_window_receiver.recv().await {
-            left_clone.set_label(&class);
+            active_window_label_clone.set_label(&class);
         }
     });
 
